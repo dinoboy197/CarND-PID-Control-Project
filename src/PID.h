@@ -10,22 +10,16 @@ public:
   double i_error;
   double d_error;
 
+  double current_cross_track_error;
+  double previous_cross_track_error;
+  double total_cross_track_error;
+
   /*
   * Coefficients
   */ 
   double Kp;
   double Ki;
   double Kd;
-
-  /*
-  * Constructor
-  */
-  PID();
-
-  /*
-  * Destructor.
-  */
-  virtual ~PID();
 
   /*
   * Initialize PID.
@@ -41,6 +35,11 @@ public:
   * Calculate the total PID error.
   */
   double TotalError();
+
+  /*
+   * Compute the steering angle given the cross track error and speed.
+   */
+  double computeSteeringAngle(double cross_track_error, double speed);
 };
 
 #endif /* PID_H */
