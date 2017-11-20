@@ -1,14 +1,10 @@
 #ifndef PID_H
 #define PID_H
 
+#include <vector>
+
 class PID {
-public:
-  /*
-  * Errors
-  */
-  double p_error;
-  double i_error;
-  double d_error;
+ private:
 
   double current_cross_track_error;
   double previous_cross_track_error;
@@ -21,25 +17,23 @@ public:
   double Ki;
   double Kd;
 
+  std::vector<double> errors;
+
+ public:
   /*
-  * Initialize PID.
+  * Initialize PID parameters.
   */
-  void Init(double Kp, double Ki, double Kd);
+  void init(double parameters[]);
 
   /*
-  * Update the PID error variables given cross track error.
+  * Update the PID error variables given cross track error and return the error.
   */
-  void UpdateError(double cte);
+  double computeError(double cte);
 
   /*
-  * Calculate the total PID error.
+  * Calculate reset, and return the total PID error.
   */
-  double TotalError();
-
-  /*
-   * Compute the steering angle given the cross track error and speed.
-   */
-  double computeSteeringAngle(double cross_track_error, double speed);
+  double getAndResetTotalError();
 };
 
 #endif /* PID_H */
