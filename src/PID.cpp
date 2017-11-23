@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-void PID::init(double parameters[], bool reset_errors) {
+void PID::init(const double parameters[], const bool reset_errors) {
   this->Kp = parameters[0];
   this->Ki = parameters[1];
   this->Kd = parameters[2];

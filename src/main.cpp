@@ -1,19 +1,14 @@
-#include <uWS/uWS.h>
-#include <iostream>
-#include "json.hpp"
-#include "PID.h"
-#include <math.h>
-
-
 #include <algorithm>
+#include <iostream>
+#include <cmath>
+
+#include <uWS/uWS.h>
+#include "json.hpp"
+
+#include "PID.h"
 
 // for convenience
 using json = nlohmann::json;
-
-// For converting back and forth between radians and degrees.
-constexpr double pi() { return M_PI; }
-double deg2rad(double x) { return x * pi() / 180; }
-double rad2deg(double x) { return x * 180 / pi(); }
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -31,44 +26,73 @@ std::string hasData(std::string s) {
   return "";
 }
 
-
-
-void print_parameters(double parameters[]) {
+void print_parameters(const double parameters[]) {
   std::cout << "[" << parameters[0] << "," << parameters[1] << "," << parameters[2] << "]";
+}
+
+void check_safety_mode(const double cte, const double safety_limit, const double last_best_parameters[],
+                       const double parameters[], PID *pid, bool *safety, bool *had_to_engage_safety_mode) {
+  if (std::abs(cte) > safety_limit) {
+    // might run off track; makes training difficult as the simulation needs to be reset frequently
+    // temporary reset parameters to last best until cte goes below 3
+    pid->init(last_best_parameters, false);
+    *safety = true;
+    *had_to_engage_safety_mode = true;
+    std::cout << "off-road safety mode engaged: ";
+    print_parameters(last_best_parameters);
+    std::cout << std::endl;
+  } else if (safety && std::abs(cte) < safety_limit) {
+    // cte is back to normal; set the parameters back to normal
+    pid->init(parameters, false);
+    *safety = false;
+    std::cout << "off-road safety mode disengaged";
+    print_parameters(parameters);
+    std::cout << std::endl;
+  }
 }
 
 int main()
 {
-  uWS::Hub h;
-
   double parameters[] = {0.0969481,0.00625112,0.857888};
   double best_steering = 80.819;
 
-  PID pid;
-  pid.init(parameters, true);
-
   const bool training = false;
   const double safety_limit = 2.5;
+  const int steps_per_evaluation = 1000;
 
   double d_parameters[] = {0.0172907, 0.000321522, 0.0643044};
   int current_p_index = 0;
-  const int steps_per_evaluation = 1000;
   long total_steps = 0;
   int steps = 0;
   bool second_phase = false;
   double last_best_parameters[3];
-
-  std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
-  std::cout << "saved parameters: ";
-  print_parameters(last_best_parameters);
-  std::cout << std::endl;
-  std::cout << "d parameters: ";
-  print_parameters(d_parameters);
-  std::cout << std::endl;
   bool safety = false;
   bool had_to_engage_safety_mode = false;
 
-  h.onMessage([&pid, &steps, &second_phase, &best_steering, &d_parameters, &current_p_index, &parameters, &total_steps, &safety, &safety_limit, &last_best_parameters, &had_to_engage_safety_mode]
+  std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
+  if (training) {
+    d_parameters[0] = 0.01;
+    d_parameters[1] = 0.001;
+    d_parameters[2] = 0.1;
+    best_steering = std::numeric_limits<double>::max();
+    std::cout << "saved parameters: ";
+    print_parameters(last_best_parameters);
+    std::cout << std::endl;
+    std::cout << "starting parameters: ";
+    print_parameters(parameters);
+    std::cout << std::endl;
+    std::cout << "d parameters: ";
+    print_parameters(d_parameters);
+    std::cout << std::endl;
+  }
+
+  PID pid;
+  pid.init(parameters, true);
+
+  uWS::Hub h;
+
+  h.onMessage([&pid, &steps, &second_phase, &best_steering, &d_parameters, &current_p_index, &parameters, &total_steps,
+               &safety, &last_best_parameters, &had_to_engage_safety_mode, &safety_limit]
                (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -82,27 +106,9 @@ int main()
         if (event == "telemetry") {
           // j[1] is the data JSON object
           double cte = std::stod(j[1]["cte"].get<std::string>());
-          double speed = std::stod(j[1]["speed"].get<std::string>());
-          double angle = std::stod(j[1]["steering_angle"].get<std::string>());
 
           if (training) {
-            if (cte > safety_limit) {
-              // might run off track; makes training difficult as the simulation needs to be reset frequently
-              // temporary reset parameters to last best until cte goes below 3
-              pid.init(last_best_parameters, false);
-              safety = true;
-              had_to_engage_safety_mode = true;
-              std::cout << "off-road safety mode engaged: ";
-              print_parameters(last_best_parameters);
-              std::cout << std::endl;
-            } else if (safety && cte < safety_limit) {
-              // cte is back to normal; set the parameters back to normal
-              pid.init(parameters, false);
-              safety = false;
-              std::cout << "off-road safety mode disengaged";
-              print_parameters(parameters);
-              std::cout << std::endl;
-            }
+            check_safety_mode(cte, safety_limit, last_best_parameters, parameters, &pid, &safety, &had_to_engage_safety_mode);
           }
 
           double steer_value = pid.computeError(cte);
