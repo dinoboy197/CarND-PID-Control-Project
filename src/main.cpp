@@ -31,23 +31,42 @@ std::string hasData(std::string s) {
   return "";
 }
 
+
+
+void print_parameters(double parameters[]) {
+  std::cout << "[" << parameters[0] << "," << parameters[1] << "," << parameters[2] << "]";
+}
+
 int main()
 {
   uWS::Hub h;
 
-  double parameters[] = {0.125, 0.0, 0.8};
-  double d_parameters[] = {0.0,0.0,0.0}; //{0.2, 0.000001, 1};
+  double parameters[] = {0.0969481,0.00625112,0.857888};
+  double d_parameters[] = {0.0172907, 0.000321522, 0.0643044};
 
   PID pid;
-  pid.init(parameters);
-  double best_steering = std::numeric_limits<double>::max();
+  pid.init(parameters, true);
+  double best_steering = 80.819;
 
   int current_p_index = 0;
-  const int steps_per_evaluation = 10;
+  const int steps_per_evaluation = 1000;
+  long total_steps = 0;
   int steps = 0;
   bool second_phase = false;
+  double last_best_parameters[3];
+  std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
+  std::cout << "saved parameters: ";
+  print_parameters(last_best_parameters);
+  std::cout << std::endl;
+  std::cout << "d parameters: ";
+  print_parameters(d_parameters);
+  std::cout << std::endl;
+  bool safety = false;
+  bool had_to_engage_safety_mode = false;
+  const double safety_limit = 2.5;
 
-  h.onMessage([&pid, &steps, &second_phase, &best_steering, &d_parameters, &current_p_index, &parameters](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid, &steps, &second_phase, &best_steering, &d_parameters, &current_p_index, &parameters, &total_steps, &safety, &safety_limit, &last_best_parameters, &had_to_engage_safety_mode]
+               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -63,75 +82,100 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
 
+          if (cte > safety_limit) {
+            // might run off track; makes training difficult as the simulation needs to be reset frequently
+            // temporary reset parameters to last best until cte goes below 3
+            pid.init(last_best_parameters, false);
+            safety = true;
+            had_to_engage_safety_mode = true;
+            std::cout << "off-road safety mode engaged: ";
+            print_parameters(last_best_parameters);
+            std::cout << std::endl;
+          } else if (safety && cte < safety_limit) {
+            // cte is back to normal; set the parameters back to normal
+            pid.init(parameters, false);
+            safety = false;
+            std::cout << "off-road safety mode disengaged";
+            print_parameters(parameters);
+            std::cout << std::endl;
+          }
+
           double steer_value = pid.computeError(cte);
 
-          if (speed < 20) {
-            pid.getAndResetTotalError();
-          } else {
-            steps = (steps + 1) % steps_per_evaluation;
-            if (steps == 0) {
+          ++total_steps;
+          steps = (steps + 1) % steps_per_evaluation;
+          if (steps == 0) {
+            // if we're in a safety mode, reset back to non-safety mode
+            if (safety) {
+              safety = false;
+              std::cout << "off-road safety mode disengaged" << std::endl;
+              pid.init(parameters, false);
+            }
 
-              double error = pid.getAndResetTotalError();
+            std::cout << "total steps " << total_steps << std::endl;
+            double error = pid.getAndResetTotalError();
+            if (!second_phase) {
+              std::cout << "index " << current_p_index << " eval phase 1" << std::endl;
+            }
+            if (!second_phase && error < best_steering && !had_to_engage_safety_mode) {
+              std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
+              std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
+              std::cout << "best parameters updated to: ";
+              print_parameters(last_best_parameters);
+              std::cout << std::endl;
+              best_steering = error;
+
+              d_parameters[current_p_index] *= 1.1;
+              std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
+
+              // move on to next parameter index to optimize
+              current_p_index = (current_p_index + 1) % 3;
+              parameters[current_p_index] += d_parameters[current_p_index];
+              std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
+
+            } else {
               if (!second_phase) {
-                std::cout << "index " << current_p_index << " eval phase 1" << std::endl;
-              }
-              if (!second_phase && error < best_steering) {
-                std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
-                best_steering = error;
-                d_parameters[current_p_index] *= 1.1;
-                std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
-
-                // move on to next parameter index to optimize
-                if (current_p_index == 0) {
-                  // skip i parameter;
-                  current_p_index += 1;
-                }
-
-                // move on to next parameter index to optimize
-                current_p_index = (current_p_index + 1) % 3;
-
-                std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                parameters[current_p_index] += d_parameters[current_p_index];
+                std::cout << "Error " << error << " NOT better than best error " << best_steering << std::endl;
+                parameters[current_p_index] -= 2 * d_parameters[current_p_index];
+                parameters[current_p_index] = std::max(0.0, parameters[current_p_index]);
+                std::cout << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl << "; ";
+                print_parameters(parameters);
+                std::cout << std::endl;
+                pid.init(parameters, true);
+                had_to_engage_safety_mode = false;
+                std::cout << "Moving to phase 2..." << std::endl;
+                // after another steps_per_evaluation steps, re-enter else clause directly
+                second_phase = true;
               } else {
-                if (!second_phase) {
+                std::cout << "index " << current_p_index << " eval phase 2" << std::endl;
+                if (error < best_steering && !had_to_engage_safety_mode) {
+                  std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
+                  std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
+                  std::cout << "best parameters updated to: ";
+                  print_parameters(last_best_parameters);
+                  std::cout << std::endl;
+                  best_steering = error;
+
+                  d_parameters[current_p_index] *= 1.1;
+                  std::cout << "Updating d_parameters[" << current_p_index<< "] to " << d_parameters[current_p_index] << std::endl;
+                } else {
                   std::cout << "Error " << error << " NOT better than best error " << best_steering << std::endl;
-                  parameters[current_p_index] -= 2 * d_parameters[current_p_index];
+                  parameters[current_p_index] += d_parameters[current_p_index];
                   parameters[current_p_index] = std::max(0.0, parameters[current_p_index]);
                   std::cout << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                  pid.init(parameters);
-                  std::cout << "Moving to phase 2..." << std::endl;
-                  // after another steps_per_evaluation steps, re-enter else clause directly
-                  second_phase = true;
-                } else {
-                  std::cout << "index " << current_p_index << " eval phase 2" << std::endl;
-                  if (error < best_steering) {
-                    std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
-                    best_steering = error;
-                    d_parameters[current_p_index] *= 1.1;
-                    std::cout << "Updating d_parameters[" << current_p_index<< "] to " << d_parameters[current_p_index] << std::endl;
-                  } else {
-                    std::cout << "Error " << error << " NOT better than best error " << best_steering << std::endl;
-                    parameters[current_p_index] += d_parameters[current_p_index];
-                    parameters[current_p_index] = std::max(0.0, parameters[current_p_index]);
-                    std::cout << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                    pid.init(parameters);
-                    d_parameters[current_p_index] *= 0.9;
-                    std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
-                  }
-
-                  // next evaluation phase should begin at the top
-                  second_phase = false;
-
-                  // move on to next parameter index to optimize
-                  if (current_p_index == 0) {
-                    // skip i parameter;
-                    current_p_index += 1;
-                  }
-                  current_p_index = (current_p_index + 1) % 3;
-
-                  std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                  parameters[current_p_index] += d_parameters[current_p_index];
+                  pid.init(parameters, true);
+                  had_to_engage_safety_mode = false;
+                  d_parameters[current_p_index] *= 0.9;
+                  std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
                 }
+
+                // next evaluation phase should begin at the top
+                second_phase = false;
+
+                current_p_index = (current_p_index + 1) % 3;
+
+                parameters[current_p_index] += d_parameters[current_p_index];
+                std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
               }
             }
           }

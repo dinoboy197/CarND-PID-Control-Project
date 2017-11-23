@@ -23,7 +23,7 @@ class PID {
   /*
   * Initialize PID parameters.
   */
-  void init(double parameters[]);
+  void init(double parameters[], bool reset_errors);
 
   /*
   * Update the PID error variables given cross track error and return the error.
