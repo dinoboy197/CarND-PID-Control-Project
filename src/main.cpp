@@ -51,6 +51,98 @@ void check_safety_mode(const double cte, const double safety_limit, const double
   }
 }
 
+void copy_parameters(const double source[], double destination[]) {
+  destination[0] = source[0];
+  destination[1] = source[1];
+  destination[2] = source[2];
+}
+
+void perform_training_adjustments(double parameters[], double last_best_parameters[], double d_parameters[],
+                                  double *best_steering, int *current_p_index, PID *pid,
+                                  bool *second_phase, bool *safety, bool *had_to_engage_safety_mode,
+                                  long *steps, long *total_steps) {
+
+  const int steps_per_evaluation = 1000;
+
+  ++(*total_steps);
+  *steps = (*steps + 1) % steps_per_evaluation;
+  if (*steps == 0) {
+    // if we're in a safety mode, reset back to non-safety mode
+    if (*safety) {
+      *safety = false;
+      std::cout << "off-road safety mode disengaged" << std::endl;
+      pid->init(parameters, false);
+    }
+
+    std::cout << "total steps " << total_steps << std::endl;
+    double error = pid->getAndResetTotalError();
+    if (!(*second_phase)) {
+      std::cout << "index " << *current_p_index << " eval phase 1" << std::endl;
+    }
+    if (!(*second_phase) && error < *best_steering && !(*had_to_engage_safety_mode)) {
+      std::cout << "Error " << error << " better than best error " << *best_steering << std::endl;
+      copy_parameters(parameters, last_best_parameters);
+      std::cout << "best parameters updated to: ";
+      print_parameters(last_best_parameters);
+      std::cout << std::endl;
+      *best_steering = error;
+
+      d_parameters[*current_p_index] *= 1.1;
+      std::cout << "Updating d_parameters[" << *current_p_index << "] to " << d_parameters[*current_p_index] << std::endl;
+
+      // move on to next parameter index to optimize
+      *current_p_index = (*current_p_index + 1) % 3;
+      parameters[*current_p_index] += d_parameters[*current_p_index];
+      std::cout << std::endl << "Updating parameters[" << *current_p_index << "] to " << parameters[*current_p_index] << std::endl;
+
+    } else {
+      if (!(*second_phase)) {
+        std::cout << "Error " << error << " NOT better than best error " << *best_steering << std::endl;
+        parameters[*current_p_index] -= 2 * d_parameters[*current_p_index];
+        parameters[*current_p_index] = std::max(0.0, parameters[*current_p_index]);
+        std::cout << "Updating parameters[" << *current_p_index << "] to " << parameters[*current_p_index] << std::endl << "; ";
+        print_parameters(parameters);
+        std::cout << std::endl;
+        pid->init(parameters, true);
+        *had_to_engage_safety_mode = false;
+        std::cout << "Moving to phase 2..." << std::endl;
+        // after another steps_per_evaluation steps, re-enter else clause directly
+        *second_phase = true;
+      } else {
+        std::cout << "index " << *current_p_index << " eval phase 2" << std::endl;
+        if (error < *best_steering && !(*had_to_engage_safety_mode)) {
+          std::cout << "Error " << error << " better than best error " << *best_steering << std::endl;
+          copy_parameters(parameters, last_best_parameters);
+          std::cout << "best parameters updated to: ";
+          print_parameters(last_best_parameters);
+          std::cout << std::endl;
+          *best_steering = error;
+
+          d_parameters[*current_p_index] *= 1.1;
+          std::cout << "Updating d_parameters[" << *current_p_index<< "] to " << d_parameters[*current_p_index] << std::endl;
+        } else {
+          std::cout << "Error " << error << " NOT better than best error " << *best_steering << std::endl;
+          parameters[*current_p_index] += d_parameters[*current_p_index];
+          parameters[*current_p_index] = std::max(0.0, parameters[*current_p_index]);
+          std::cout << "Updating parameters[" << *current_p_index << "] to " << parameters[*current_p_index] << std::endl;
+          pid->init(parameters, true);
+          *had_to_engage_safety_mode = false;
+          d_parameters[*current_p_index] *= 0.9;
+          std::cout << "Updating d_parameters[" << *current_p_index << "] to " << d_parameters[*current_p_index] << std::endl;
+        }
+
+        // next evaluation phase should begin at the top
+        *second_phase = false;
+
+        *current_p_index = (*current_p_index + 1) % 3;
+
+        parameters[*current_p_index] += d_parameters[*current_p_index];
+        std::cout << std::endl << "Updating parameters[" << *current_p_index << "] to " << parameters[*current_p_index] << std::endl;
+      }
+    }
+  }
+}
+
 int main()
 {
   double parameters[] = {0.0969481,0.00625112,0.857888};
@@ -58,12 +150,11 @@ int main()
 
   const bool training = false;
   const double safety_limit = 2.5;
-  const int steps_per_evaluation = 1000;
 
   double d_parameters[] = {0.0172907, 0.000321522, 0.0643044};
   int current_p_index = 0;
   long total_steps = 0;
-  int steps = 0;
+  long steps = 0;
   bool second_phase = false;
   double last_best_parameters[3];
   bool safety = false;
@@ -114,87 +205,11 @@ int main()
           double steer_value = pid.computeError(cte);
 
           if (training) {
-            ++total_steps;
-            steps = (steps + 1) % steps_per_evaluation;
-            if (steps == 0) {
-              // if we're in a safety mode, reset back to non-safety mode
-              if (safety) {
-                safety = false;
-                std::cout << "off-road safety mode disengaged" << std::endl;
-                pid.init(parameters, false);
-              }
-
-              std::cout << "total steps " << total_steps << std::endl;
-              double error = pid.getAndResetTotalError();
-              if (!second_phase) {
-                std::cout << "index " << current_p_index << " eval phase 1" << std::endl;
-              }
-              if (!second_phase && error < best_steering && !had_to_engage_safety_mode) {
-                std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
-                std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
-                std::cout << "best parameters updated to: ";
-                print_parameters(last_best_parameters);
-                std::cout << std::endl;
-                best_steering = error;
-
-                d_parameters[current_p_index] *= 1.1;
-                std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
-
-                // move on to next parameter index to optimize
-                current_p_index = (current_p_index + 1) % 3;
-                parameters[current_p_index] += d_parameters[current_p_index];
-                std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-
-              } else {
-                if (!second_phase) {
-                  std::cout << "Error " << error << " NOT better than best error " << best_steering << std::endl;
-                  parameters[current_p_index] -= 2 * d_parameters[current_p_index];
-                  parameters[current_p_index] = std::max(0.0, parameters[current_p_index]);
-                  std::cout << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl << "; ";
-                  print_parameters(parameters);
-                  std::cout << std::endl;
-                  pid.init(parameters, true);
-                  had_to_engage_safety_mode = false;
-                  std::cout << "Moving to phase 2..." << std::endl;
-                  // after another steps_per_evaluation steps, re-enter else clause directly
-                  second_phase = true;
-                } else {
-                  std::cout << "index " << current_p_index << " eval phase 2" << std::endl;
-                  if (error < best_steering && !had_to_engage_safety_mode) {
-                    std::cout << "Error " << error << " better than best error " << best_steering << std::endl;
-                    std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
-                    std::cout << "best parameters updated to: ";
-                    print_parameters(last_best_parameters);
-                    std::cout << std::endl;
-                    best_steering = error;
-
-                    d_parameters[current_p_index] *= 1.1;
-                    std::cout << "Updating d_parameters[" << current_p_index<< "] to " << d_parameters[current_p_index] << std::endl;
-                  } else {
-                    std::cout << "Error " << error << " NOT better than best error " << best_steering << std::endl;
-                    parameters[current_p_index] += d_parameters[current_p_index];
-                    parameters[current_p_index] = std::max(0.0, parameters[current_p_index]);
-                    std::cout << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                    pid.init(parameters, true);
-                    had_to_engage_safety_mode = false;
-                    d_parameters[current_p_index] *= 0.9;
-                    std::cout << "Updating d_parameters[" << current_p_index << "] to " << d_parameters[current_p_index] << std::endl;
-                  }
-
-                  // next evaluation phase should begin at the top
-                  second_phase = false;
-
-                  current_p_index = (current_p_index + 1) % 3;
-
-                  parameters[current_p_index] += d_parameters[current_p_index];
-                  std::cout << std::endl << "Updating parameters[" << current_p_index << "] to " << parameters[current_p_index] << std::endl;
-                }
-              }
-            }
+            perform_training_adjustments(parameters, last_best_parameters, d_parameters,
+                                         &best_steering, &current_p_index, &pid,
+                                          &second_phase, &safety, &had_to_engage_safety_mode,
+                                          &steps, &total_steps);
           }
-
-          // DEBUG
-          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
