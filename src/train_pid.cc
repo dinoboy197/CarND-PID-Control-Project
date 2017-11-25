@@ -5,19 +5,22 @@
 
 #include "train_pid.h"
 
-TrainPID::TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training) :
-    pid_(pid), kMaxStepsPerEvaluation(max_steps_per_evaluation), kSafetyLimit(safety_limit), kTraining(training) {
-   safety_ = false;
-   current_p_index_ = 0;
-   had_to_engage_safety_mode_ = 0;
-   steps_ = 0;
-   total_steps_ = training ? 10.0 : kMaxStepsPerEvaluation;
-   second_phase_ = false;
-   best_steering_ = std::numeric_limits<double>::max();
+TrainPID::TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training)
+    : pid_(pid),
+      kMaxStepsPerEvaluation(max_steps_per_evaluation),
+      kSafetyLimit(safety_limit),
+      kTraining(training) {
+  safety_ = false;
+  current_p_index_ = 0;
+  had_to_engage_safety_mode_ = 0;
+  steps_ = 0;
+  total_steps_ = training ? 10.0 : kMaxStepsPerEvaluation;
+  second_phase_ = false;
+  best_steering_ = std::numeric_limits<double>::max();
 
-   pid->get_parameters(parameters_);
-   pid->get_parameters(last_best_parameters_);
-   copy_parameters(parameters_, d_parameters_, 10.0);
+  pid->get_parameters(parameters_);
+  pid->get_parameters(last_best_parameters_);
+  copy_parameters(parameters_, d_parameters_, 10.0);
 }
 
 void TrainPID::print_parameters(const double parameters[]) {
@@ -32,17 +35,17 @@ void TrainPID::copy_parameters(const double source[], double destination[], doub
 
 void TrainPID::perform_training_adjustments(const double cross_track_error) {
 
-  steps_ = (steps_ + 1) % (int)total_steps_;
+  steps_ = (steps_ + 1) % (int) total_steps_;
   if (steps_ == 0) {
     if (kTraining) {
-      if ((int)total_steps_ < kMaxStepsPerEvaluation) {
+      if ((int) total_steps_ < kMaxStepsPerEvaluation) {
         total_steps_ *= 1.1;
-        if ((int)total_steps_ >= kMaxStepsPerEvaluation) {
+        if ((int) total_steps_ >= kMaxStepsPerEvaluation) {
           best_steering_ = std::numeric_limits<double>::max();
         }
         std::cout << "total steps increased to " << total_steps_ << std::endl;
       }
-      if ((int)total_steps_ < kMaxStepsPerEvaluation && best_steering_ < std::numeric_limits<double>::max()) {
+      if ((int) total_steps_ < kMaxStepsPerEvaluation && best_steering_ < std::numeric_limits<double>::max()) {
         best_steering_ *= 1.2;
         std::cout << "best error increased to " << best_steering_ << std::endl;
       }
@@ -55,7 +58,7 @@ void TrainPID::perform_training_adjustments(const double cross_track_error) {
       }
     }
 
-    double error = pid_->getAndResetTotalError();
+    double error = pid_->get_and_reset_total_error();
 
     if (!kTraining) {
       std::cout << "total error on loop: " << error << std::endl;
@@ -74,19 +77,22 @@ void TrainPID::perform_training_adjustments(const double cross_track_error) {
       best_steering_ = error;
 
       d_parameters_[current_p_index_] *= 1.1;
-      std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_] << std::endl;
+      std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_]
+                << std::endl;
 
       // move on to next parameter index to optimize
       current_p_index_ = (current_p_index_ + 1) % 3;
       parameters_[current_p_index_] += d_parameters_[current_p_index_];
-      std::cout << std::endl << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_] << std::endl;
+      std::cout << std::endl << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_]
+                << std::endl;
 
     } else {
       if (!second_phase_) {
         std::cout << "Error " << error << " NOT better than best error " << best_steering_ << std::endl;
         parameters_[current_p_index_] -= 2 * d_parameters_[current_p_index_];
         parameters_[current_p_index_] = std::max(0.0, parameters_[current_p_index_]);
-        std::cout << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_] << std::endl << "; ";
+        std::cout << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_] << std::endl
+                  << "; ";
         print_parameters(parameters_);
         std::cout << std::endl;
         pid_->init(parameters_, true);
@@ -105,16 +111,19 @@ void TrainPID::perform_training_adjustments(const double cross_track_error) {
           best_steering_ = error;
 
           d_parameters_[current_p_index_] *= 1.1;
-          std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_] << std::endl;
+          std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_]
+                    << std::endl;
         } else {
           std::cout << "Error " << error << " NOT better than best error " << best_steering_ << std::endl;
           parameters_[current_p_index_] += d_parameters_[current_p_index_];
           parameters_[current_p_index_] = std::max(0.0, parameters_[current_p_index_]);
-          std::cout << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_] << std::endl;
+          std::cout << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_]
+                    << std::endl;
           pid_->init(parameters_, true);
           had_to_engage_safety_mode_ = false;
           d_parameters_[current_p_index_] *= 0.9;
-          std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_] << std::endl;
+          std::cout << "Updating d_parameters[" << current_p_index_ << "] to " << d_parameters_[current_p_index_]
+                    << std::endl;
         }
 
         // next evaluation phase should begin at the top
@@ -123,7 +132,8 @@ void TrainPID::perform_training_adjustments(const double cross_track_error) {
         current_p_index_ = (current_p_index_ + 1) % 3;
 
         parameters_[current_p_index_] += d_parameters_[current_p_index_];
-        std::cout << std::endl << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_] << std::endl;
+        std::cout << std::endl << "Updating parameters[" << current_p_index_ << "] to " << parameters_[current_p_index_]
+                  << std::endl;
       }
     }
   }

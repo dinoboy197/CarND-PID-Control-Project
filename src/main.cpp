@@ -28,8 +28,8 @@ std::string hasData(std::string s) {
 
 int main()
 {
-  double parameters[] = {0.125,0.00625112,0.9};
-  // 0.125,0.00625112,0.9
+  double parameters[] = {0.119672,0.0119457,0.968768};
+  // 0.125,0.00625112,0.9 - 99.66 total error
   // 0.119672,0.0119457,0.968768
   // 0.0969481,0.00625112,0.857888
 
@@ -61,7 +61,7 @@ int main()
             train_pid.check_safety_mode(cte);
           }
 
-          double steer_value = pid.computeError(cte);
+          double steer_value = pid.compute_error(cte);
 
           train_pid.perform_training_adjustments(cte);
 

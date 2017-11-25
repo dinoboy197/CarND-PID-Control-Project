@@ -20,7 +20,7 @@ void PID::get_parameters(double new_parameters[]) {
   new_parameters[2] = Kd;
 }
 
-double PID::computeError(double cte) {
+double PID::compute_error(double cte) {
   total_cross_track_error += cte;
   previous_cross_track_error = current_cross_track_error;
   current_cross_track_error = cte;
@@ -30,7 +30,7 @@ double PID::computeError(double cte) {
   return error;
 }
 
-double PID::getAndResetTotalError() {
+double PID::get_and_reset_total_error() {
   current_cross_track_error = 0;
   previous_cross_track_error = 0;
   total_cross_track_error = 0;
