@@ -5,20 +5,19 @@
 
 #include "train_pid.h"
 
-
-TrainPID::TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const double initial_parameters[]) :
-    pid_(pid), kMaxStepsPerEvaluation(max_steps_per_evaluation), kSafetyLimit(safety_limit) {
+TrainPID::TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training) :
+    pid_(pid), kMaxStepsPerEvaluation(max_steps_per_evaluation), kSafetyLimit(safety_limit), kTraining(training) {
    safety_ = false;
    current_p_index_ = 0;
    had_to_engage_safety_mode_ = 0;
    steps_ = 0;
-   total_steps_ = 10.0;
+   total_steps_ = training ? 10.0 : kMaxStepsPerEvaluation;
    second_phase_ = false;
    best_steering_ = std::numeric_limits<double>::max();
 
-   copy_parameters(initial_parameters, parameters_);
+   pid->get_parameters(parameters_);
+   pid->get_parameters(last_best_parameters_);
    copy_parameters(parameters_, d_parameters_, 10.0);
-   copy_parameters(initial_parameters, last_best_parameters_);
 }
 
 void TrainPID::print_parameters(const double parameters[]) {
@@ -31,30 +30,38 @@ void TrainPID::copy_parameters(const double source[], double destination[], doub
   destination[2] = source[2] / divisor;
 }
 
-void TrainPID::perform_training_adjustments(double cross_track_error) {
+void TrainPID::perform_training_adjustments(const double cross_track_error) {
 
   steps_ = (steps_ + 1) % (int)total_steps_;
   if (steps_ == 0) {
-    if ((int)total_steps_ < kMaxStepsPerEvaluation) {
-      total_steps_ *= 1.1;
-      if ((int)total_steps_ >= kMaxStepsPerEvaluation) {
-        best_steering_ = std::numeric_limits<double>::max();
+    if (kTraining) {
+      if ((int)total_steps_ < kMaxStepsPerEvaluation) {
+        total_steps_ *= 1.1;
+        if ((int)total_steps_ >= kMaxStepsPerEvaluation) {
+          best_steering_ = std::numeric_limits<double>::max();
+        }
+        std::cout << "total steps increased to " << total_steps_ << std::endl;
       }
-      std::cout << "total steps increased to " << total_steps_ << std::endl;
-    }
-    if ((int)total_steps_ < kMaxStepsPerEvaluation && best_steering_ < std::numeric_limits<double>::max()) {
-      best_steering_ *= 1.2;
-      std::cout << "best error increased to " << best_steering_ << std::endl;
-    }
+      if ((int)total_steps_ < kMaxStepsPerEvaluation && best_steering_ < std::numeric_limits<double>::max()) {
+        best_steering_ *= 1.2;
+        std::cout << "best error increased to " << best_steering_ << std::endl;
+      }
 
-    // if we're in a safety mode, reset back to non-safety mode
-    if (safety_) {
-      safety_ = false;
-      std::cout << "off-road safety mode disengaged" << std::endl;
-      pid_->init(parameters_, false);
+      // if we're in a safety mode, reset back to non-safety mode
+      if (safety_) {
+        safety_ = false;
+        std::cout << "off-road safety mode disengaged" << std::endl;
+        pid_->init(parameters_, false);
+      }
     }
 
     double error = pid_->getAndResetTotalError();
+
+    if (!kTraining) {
+      std::cout << "total error on loop: " << error << std::endl;
+      return;
+    }
+
     if (!second_phase_) {
       std::cout << "index " << current_p_index_ << " eval phase 1" << std::endl;
     }

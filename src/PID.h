@@ -25,6 +25,8 @@ class PID {
   */
   void init(const double parameters[], const bool reset_errors);
 
+  void get_parameters(double parameters[]);
+
   /*
   * Update the PID error variables given cross track error and return the error.
   */

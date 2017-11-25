@@ -8,6 +8,7 @@ class TrainPID {
   PID *pid_;
   const int kMaxStepsPerEvaluation;
   const double kSafetyLimit;
+  const bool kTraining;
 
   double total_steps_;
   long steps_;
@@ -24,7 +25,7 @@ class TrainPID {
   void print_parameters(const double parameters[]);
 
  public:
-  TrainPID(PID *pid, const long steps_per_evaluation, const double safety_limit, const double initial_parameters[]);
+  TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training);
 
   void perform_training_adjustments(const double cross_track_error);
   void check_safety_mode(const double cross_track_error);

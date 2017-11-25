@@ -29,21 +29,16 @@ std::string hasData(std::string s) {
 int main()
 {
   double parameters[] = {0.125,0.00625112,0.9};
+  // 0.125,0.00625112,0.9
   // 0.119672,0.0119457,0.968768
+  // 0.0969481,0.00625112,0.857888
 
-  const bool training = true;
+  const bool training = false;
 
   PID pid;
   pid.init(parameters, true);
 
-  double last_best_parameters[3];
-  TrainPID *train_pid;
-
-  std::copy(std::begin(parameters), std::end(parameters), std::begin(last_best_parameters));
-  if (training) {
-    double initial[] = {0.1, 0.01, 0.8};
-    train_pid = new TrainPID(&pid, 1000, 2.5, initial);
-  }
+  TrainPID train_pid(&pid, 1000, 2.5, training);
 
   uWS::Hub h;
 
@@ -63,14 +58,12 @@ int main()
           double cte = std::stod(j[1]["cte"].get<std::string>());
 
           if (training) {
-            train_pid->check_safety_mode(cte);
+            train_pid.check_safety_mode(cte);
           }
 
           double steer_value = pid.computeError(cte);
 
-          if (training) {
-            train_pid->perform_training_adjustments(cte);
-          }
+          train_pid.perform_training_adjustments(cte);
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;

@@ -14,6 +14,12 @@ void PID::init(const double parameters[], const bool reset_errors) {
   }
 }
 
+void PID::get_parameters(double new_parameters[]) {
+  new_parameters[0] = Kp;
+  new_parameters[1] = Ki;
+  new_parameters[2] = Kd;
+}
+
 double PID::computeError(double cte) {
   total_cross_track_error += cte;
   previous_cross_track_error = current_cross_track_error;
