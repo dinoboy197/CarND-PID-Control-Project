@@ -25,13 +25,13 @@ The coordinate descent algorithm is embedded in a framework to ensure that the t
 
 ## Results
 
-Using the training module, and with the inital parameters of p = 0.1, i = 0.01, d = 1.0, the training module arrived at a local optima of error with final parameter values p = 0.0969481, i = 0.00625112, d = 0.857888.
+Using the training module, and with the inital parameters of p = 0.1, i = 0.01, d = 1.0, the training module arrived at a local optima of error with final parameter values p = 0.127777, i = 0.00937592, d = 1.03501.
 
-The P (proportional) steering control of 0.0969481 ensures that steering corrections are proportional to the cross track error of the vehicle to the center of the lane. It is easy to verify this on its own; when the vehicle is travelling away from the center of the lane, the steering commands direct the vehicle back toward the center. However, with this value set and the integral and differential values at zero, the vehicle sways wildely back and forth through the track.
+The P (proportional) steering control of 0.127777 ensures that steering corrections are proportional to the cross track error of the vehicle to the center of the lane. It is easy to verify this on its own; when the vehicle is travelling away from the center of the lane, the steering commands direct the vehicle back toward the center. However, with this value set and the integral and differential values at zero, the vehicle sways wildely back and forth through the track.
 
-The D (differential) steering control of 0.857888 attempts to limit the wild sway of the vehicle as it corrects errors by counter-steering. As steering is changed to correct for error, adjustments are reduced by the amount of change between each time step in the simulation. This attempts to prevent the vehicle from overshooting the center of the lane during a correction.
+The D (differential) steering control of 1.03501 attempts to limit the wild sway of the vehicle as it corrects errors by counter-steering. As steering is changed to correct for error, adjustments are reduced by the amount of change between each time step in the simulation. This attempts to prevent the vehicle from overshooting the center of the lane during a correction.
 
-The I (integral) steering control of 0.00625112 corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
+The I (integral) steering control of 0.00937592 corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
 
 ***
 
