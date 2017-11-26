@@ -66,8 +66,6 @@ There's an experimental patch for windows in this [PR](https://github.com/udacit
 
 ## Basic Build Instructions
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+1. Compile: `cmake .. && make`
+1. Run it: `./pid`. 
 
