@@ -5,23 +5,26 @@
 
 class PID {
  private:
+  const double kMaxSpeed;
 
   // individual and total errors
-  double current_cross_track_error;
-  double previous_cross_track_error;
-  double total_cross_track_error;
-  std::vector<double> errors;
+  double current_cross_track_error_;
+  double previous_cross_track_error_;
+  double total_cross_track_error_;
+  std::vector<double> errors_;
 
   // pid coefficients
-  double Kp;
-  double Ki;
-  double Kd;
+  double Kp_;
+  double Ki_;
+  double Kd_;
 
  public:
+  PID(const double max_speed);
+
   /*
    * Initialize PID parameters.
    */
-  void init(const double parameters[], const bool reset_errors);
+  void init(const double parameters[], const bool reset_errors = false);
 
   /*
    * Get parameters.
@@ -29,9 +32,9 @@ class PID {
   void get_parameters(double parameters[]);
 
   /*
-   * Update the PID error variables given cross track error and return the error.
+   * Update the PID error variables given cross track error and return the new steering angle.
    */
-  double compute_error(double cte);
+  double compute_steering_angle(const double cte);
 
   /*
    * Calculate reset, and return the total PID error.

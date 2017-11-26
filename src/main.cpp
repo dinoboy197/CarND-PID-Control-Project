@@ -28,12 +28,12 @@ std::string hasData(std::string s) {
 
 int main()
 {
-  double parameters[] = {0.0969481,0.00625112,0.857888};
+  double parameters[] = {0.127777,0.00937592,1.03501};
 
   const bool training = false;
 
-  PID pid;
-  pid.init(parameters, true);
+  PID pid(30.0);
+  pid.init(parameters);
 
   TrainPID train_pid(&pid, 1000, 2.5, training);
 
@@ -58,7 +58,7 @@ int main()
             train_pid.check_safety_mode(cte);
           }
 
-          double steer_value = pid.compute_error(cte);
+          double steer_value = pid.compute_steering_angle(cte);
 
           train_pid.perform_training_adjustments(cte);
 

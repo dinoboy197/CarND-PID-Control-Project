@@ -12,7 +12,7 @@ class TrainPID {
 
   double total_steps_;
   long steps_;
-  double best_steering_;
+  double best_error_;
   bool safety_;
   bool had_to_engage_safety_mode_;
   int current_p_index_;
@@ -21,8 +21,9 @@ class TrainPID {
   double last_best_parameters_[3];
   double d_parameters_[3];
 
-  void copy_parameters(const double source[], double destination[], double divisor = 1.0);
+  void copy_and_scale_parameters(const double source[], double destination[], double divisor = 1.0);
   void print_parameters(const double parameters[]);
+  void increase_training_loop_size();
 
  public:
   TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training);

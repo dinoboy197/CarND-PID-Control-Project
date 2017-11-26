@@ -8,7 +8,7 @@ Self-Driving Car Engineer Nanodegree Program
 The main implementation pieces of this project include:
 
 * Basic PID controller for steering
-* Training module to implement coordinate ascent for PID parameter optimization
+* Training module to implement coordinate descent for PID parameter optimization
 
 ### PID controller
 
@@ -19,9 +19,9 @@ The [PID controller (class `PID`)](src/PID.cpp) for steering is implemented in a
 
 ### Training module
 
-A [training module (class `TrainPID`)](src/TrainPID.cc) is implemented to optimize the PID constant parameters based on the [coordinate ascent algorithm](https://en.wikipedia.org/wiki/Coordinate_descent) (aka twiddle). The algorithm optimizes each parameter in the error function independently, moving it up or down to find a small improvement in error. This method will find local minima of the error function overall, meaning that the parameters found are not guaranteed to be the best parameters to minimize error, but will be based on starting parameters given.
+A [training module (class `TrainPID`)](src/TrainPID.cc) is implemented to optimize the PID constant parameters based on the [coordinate descent algorithm](https://en.wikipedia.org/wiki/Coordinate_descent). The algorithm optimizes each parameter in the error function independently, moving it up or down to find a small improvement in error. This method will find local minima of the error function overall, meaning that the parameters found are not guaranteed to be the best parameters to minimize error, but will be based on starting parameters given.
 
-The coordinate ascent algorithm is embedded in a framework to ensure that the total error measurement for parameter setting ends up taking the entire track into account, not just a small portion of it. However, small portions of track are useful for initial parameter and parameter delta setting in the early moments of the algorithm run, to prevent the vehicle from leaving the drivable portion of the track surface. The TrainPID module ensures that if the vehicle appears to be leaving the track surface, the last best parameters are re-installed in the PID controller temporarily, until the vehicle returns to a safe driving state. In that case, those particular parameters that caused the vehicle to lose control are then invalidated as candidates for possible best selection, even if their overall error rate was lower than the previous best error rate.
+The coordinate descent algorithm is embedded in a framework to ensure that the total error measurement for parameter setting ends up taking the entire track into account, not just a small portion of it. However, small portions of track are useful for initial parameter and parameter delta setting in the early moments of the algorithm run, to prevent the vehicle from leaving the drivable portion of the track surface. The TrainPID module ensures that if the vehicle appears to be leaving the track surface, the last best parameters are re-installed in the PID controller temporarily, until the vehicle returns to a safe driving state. In that case, those particular parameters that caused the vehicle to lose control are then invalidated as candidates for possible best selection, even if their overall error rate was lower than the previous best error rate.
 
 ## Results
 
@@ -33,8 +33,9 @@ The D (differential) steering control of 0.857888 attempts to limit the wild swa
 
 The I (integral) steering control of 0.00625112 corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
 
+***
 
-Overall, these settings for the PID controller ensure that the vehicle drives continuously around the track without hitting any road hazards or leaving the drivable portion of the road surface.
+Overall, these settings for the PID controller ensure that the vehicle drives continuously around the track without hitting any road hazards or leaving the drivable portion of the road surface. One caveat is that in the first few seconds of driving, while the vehicle is under 30 mph, the vehicle does sway from side to side.
 
 
 --
