@@ -3,6 +3,42 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Implementation details
+
+The main implementation pieces of this project include:
+
+* Basic PID controller for steering
+* Training module to implement coordinate ascent for PID parameter optimization
+
+### PID controller
+
+The [PID controller (class `PID`)](src/PID.cpp) for steering is implemented in a standard fashion, with error adjustments based on the sum of:
+* error proportional to a constant (P)
+* error delta since previous step proportional to a constant (D)
+* total error summed over each step proportional to a constant (I)
+
+### Training module
+
+A [training module (class `TrainPID`)](src/TrainPID.cc) is implemented to optimize the PID constant parameters based on the [coordinate ascent algorithm](https://en.wikipedia.org/wiki/Coordinate_descent) (aka twiddle). The algorithm optimizes each parameter in the error function independently, moving it up or down to find a small improvement in error. This method will find local minima of the error function overall, meaning that the parameters found are not guaranteed to be the best parameters to minimize error, but will be based on starting parameters given.
+
+The coordinate ascent algorithm is embedded in a framework to ensure that the total error measurement for parameter setting ends up taking the entire track into account, not just a small portion of it. However, small portions of track are useful for initial parameter and parameter delta setting in the early moments of the algorithm run, to prevent the vehicle from leaving the drivable portion of the track surface. The TrainPID module ensures that if the vehicle appears to be leaving the track surface, the last best parameters are re-installed in the PID controller temporarily, until the vehicle returns to a safe driving state. In that case, those particular parameters that caused the vehicle to lose control are then invalidated as candidates for possible best selection, even if their overall error rate was lower than the previous best error rate.
+
+## Results
+
+Using the training module, and with the inital parameters of p = 0.1, i = 0.01, d = 1.0, the training module arrived at a local optima of error with final parameter values p = 0.0969481, i = 0.00625112, d = 0.857888.
+
+The P (proportional) steering control of 0.0969481 ensures that steering corrections are proportional to the cross track error of the vehicle to the center of the lane. It is easy to verify this on its own; when the vehicle is travelling away from the center of the lane, the steering commands direct the vehicle back toward the center. However, with this value set and the integral and differential values at zero, the vehicle sways wildely back and forth through the track.
+
+The D (differential) steering control of 0.857888 attempts to limit the wild sway of the vehicle as it corrects errors by counter-steering. As steering is changed to correct for error, adjustments are reduced by the amount of change between each time step in the simulation. This attempts to prevent the vehicle from overshooting the center of the lane during a correction.
+
+The I (integral) steering control of 0.00625112 corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
+
+
+Overall, these settings for the PID controller ensure that the vehicle drives continuously around the track without hitting any road hazards or leaving the drivable portion of the road surface.
+
+
+--
+
 ## Dependencies
 
 * cmake >= 3.5
@@ -34,65 +70,4 @@ There's an experimental patch for windows in this [PR](https://github.com/udacit
 2. Make a build directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./pid`. 
-
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
 
