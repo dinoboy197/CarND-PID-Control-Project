@@ -28,10 +28,7 @@ std::string hasData(std::string s) {
 
 int main()
 {
-  double parameters[] = {0.119672,0.0119457,0.968768};
-  // 0.125,0.00625112,0.9 - 99.66 total error
-  // 0.119672,0.0119457,0.968768
-  // 0.0969481,0.00625112,0.857888
+  double parameters[] = {0.0969481,0.00625112,0.857888};
 
   const bool training = false;
 
