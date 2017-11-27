@@ -3,6 +3,10 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+## Video of vehicle control
+
+Please see a video of the PID controller I implemented in this project controlling the steering of the vehicle in the Term 2 simulator [here](https://youtu.be/BH02_HSZ-eQ).
+
 ## Implementation details
 
 The main implementation pieces of this project include:
