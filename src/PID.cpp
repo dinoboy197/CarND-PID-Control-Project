@@ -1,8 +1,9 @@
 #include "PID.h"
 
-#include <algorithm>
+#include <cmath>
+#include <numeric>
 
-PID::PID(const double max_speed) : kMaxSpeed(max_speed) {
+PID::PID() {
   errors_ = std::vector<double>();
   current_cross_track_error_ = 0;
   previous_cross_track_error_ = 0;

@@ -5,8 +5,6 @@
 
 class PID {
  private:
-  const double kMaxSpeed;
-
   // individual and total errors
   double current_cross_track_error_;
   double previous_cross_track_error_;
@@ -19,7 +17,7 @@ class PID {
   double Kd_;
 
  public:
-  PID(const double max_speed);
+  PID();
 
   /*
    * Initialize PID parameters.

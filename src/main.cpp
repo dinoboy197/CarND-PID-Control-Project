@@ -1,5 +1,4 @@
-#include <iostream>
-#include <cmath>
+#include <cctype>
 
 #include <uWS/uWS.h>
 #include "json.hpp"
@@ -26,13 +25,30 @@ std::string hasData(std::string s) {
   return "";
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-  double parameters[] = {0.127777,0.00937592,1.03501};
+  const double linux_parameters[] = {0.127777,0.00937592,1.03501};
+  const double mac_parameters[] = {0.3011,0.00110,4.8013};
+  
+  double parameters[3];
+  
+  std::cout << "The Mac and Linux simulators behave differently! Are you using the Mac or Linux simulator? Type L for Linux or M for Mac (then press enter): ";
+  char p;
+  std::cin >> p;
+
+  if (tolower(p) == 'm') {
+    std::copy(std::begin(mac_parameters), std::end(mac_parameters), std::begin(parameters));
+  } else if (tolower(p) == 'l') {
+    std::copy(std::begin(linux_parameters), std::end(linux_parameters), std::begin(parameters));
+  } else {
+    std::cerr << "You entered bad input: " << p << std::endl;
+    return 1;
+  }
+  
 
   const bool training = false;
 
-  PID pid(30.0);
+  PID pid;
   pid.init(parameters);
 
   TrainPID train_pid(&pid, 1000, 2.5, training);

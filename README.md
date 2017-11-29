@@ -5,7 +5,7 @@ Self-Driving Car Engineer Nanodegree Program
 
 ## Video of vehicle control
 
-Please see a video of the PID controller I implemented in this project controlling the steering of the vehicle in the Term 2 simulator [here](https://youtu.be/BH02_HSZ-eQ).
+Please see a video of the PID controller I implemented in this project controlling the steering of the vehicle in the Linux Term 2 simulator [here](https://youtu.be/BH02_HSZ-eQ).
 
 ## Implementation details
 
@@ -29,13 +29,13 @@ The coordinate descent algorithm is embedded in a framework to ensure that the t
 
 ## Results
 
-Using the training module, and with the inital parameters of p = 0.1, i = 0.01, d = 1.0, the training module arrived at a local optima of error with final parameter values p = 0.127777, i = 0.00937592, d = 1.03501.
+Using the training module, and with the inital parameters of p = 0.1, i = 0.01, d = 1.0, the training module arrived at a local optima of error with final parameter values p = 0.127777, i = 0.00937592, d = 1.03501 (in the Linux simulator) and p = 0.3011, i = 0.00110, d = 4.8013 (in the Mac simulator). The two simulators provide different data (different vehicle timestep sizes and angles) to the control program; hence, different values are necessary.
 
-The P (proportional) steering control of 0.127777 ensures that steering corrections are proportional to the cross track error of the vehicle to the center of the lane. It is easy to verify this on its own; when the vehicle is travelling away from the center of the lane, the steering commands direct the vehicle back toward the center. However, with this value set and the integral and differential values at zero, the vehicle sways wildely back and forth through the track.
+The P (proportional) steering control ensures that steering corrections are proportional to the cross track error of the vehicle to the center of the lane. It is easy to verify this on its own; when the vehicle is travelling away from the center of the lane, the steering commands direct the vehicle back toward the center. However, with this value set and the integral and differential values at zero, the vehicle sways wildely back and forth through the track.
 
-The D (differential) steering control of 1.03501 attempts to limit the wild sway of the vehicle as it corrects errors by counter-steering. As steering is changed to correct for error, adjustments are reduced by the amount of change between each time step in the simulation. This attempts to prevent the vehicle from overshooting the center of the lane during a correction.
+The D (differential) steering control attempts to limit the wild sway of the vehicle as it corrects errors by counter-steering. As steering is changed to correct for error, adjustments are reduced by the amount of change between each time step in the simulation. This attempts to prevent the vehicle from overshooting the center of the lane during a correction.
 
-The I (integral) steering control of 0.00937592 corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
+The I (integral) steering control corrects for steering bias of the vehicle. The vehicle naturally "pulls" to the side when the steering command is 0.0; this ensures that the vehicle drives relatively straight.
 
 ***
 
@@ -73,4 +73,5 @@ There's an experimental patch for windows in this [PR](https://github.com/udacit
 
 1. Compile: `cmake .. && make`
 1. Run it: `./pid`. 
+1. Type m or l depending on which simulator you are using.
 

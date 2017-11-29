@@ -1,9 +1,8 @@
 #include "train_pid.h"
 
-#include <algorithm>
+#include <cmath>
 #include <iostream>
-
-#include "train_pid.h"
+#include <limits>
 
 TrainPID::TrainPID(PID *pid, const long max_steps_per_evaluation, const double safety_limit, const bool training)
     : pid_(pid),
@@ -77,8 +76,9 @@ void TrainPID::perform_training_adjustments(const double cross_track_error) {
 
     if (!kTraining) {
       // do not perform coordinate ascent if we're not in training
-      std::cout << "total error on loop: " << error << std::endl;
       return;
+    } else {  
+      std::cout << "total error on loop: " << error << std::endl;
     }
 
     if (!second_phase_) {
